@@ -33,6 +33,11 @@ env:
   NODE_VERSION: '18'
   JAVA_VERSION: '11'
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 jobs:
   lint-and-audit:
     runs-on: ubuntu-latest
@@ -61,7 +66,7 @@ jobs:
   android-tests:
     needs: lint-and-audit
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'both' || github.event.inputs.platform == null }}
+    if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'both' || github.event.inputs.platform == '' || github.event_name != 'workflow_dispatch' }}
     
     strategy:
       matrix:
@@ -272,7 +277,6 @@ jobs:
       - name: Generate Allure Report
         run: |
           allure generate merged-results --clean -o allure-report
-          allure open allure-report
 
       - name: Upload Allure Report
         uses: actions/upload-artifact@v4
@@ -302,7 +306,7 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
 

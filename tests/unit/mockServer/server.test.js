@@ -4,10 +4,6 @@
 const { expect } = require('chai');
 const sinon = require('sinon');
 const request = require('supertest');
-const express = require('express');
-
-// Mock the server module
-const proxyquire = require('proxyquire');
 
 describe('Mock API Server', function () {
   let app;
@@ -139,7 +135,6 @@ describe('Mock API Server', function () {
 
   describe('User Login', function () {
     let registeredUser;
-    let authToken;
 
     beforeEach(async function () {
       // Register a user for login tests
@@ -474,7 +469,7 @@ describe('Mock API Server', function () {
 
   describe('Error Handling', function () {
     it('should handle malformed JSON requests', async function () {
-      const response = await request(app)
+      await request(app)
         .post('/auth/register')
         .send('invalid-json')
         .expect(400);
@@ -486,12 +481,16 @@ describe('Mock API Server', function () {
       const response = await request(app)
         .get('/non-existent-endpoint')
         .expect(404);
+
+      expect(response.body).to.have.property('error', 'Endpoint not found');
     });
 
     it('should handle missing request body', async function () {
       const response = await request(app)
         .post('/auth/register')
         .expect(400);
+
+      expect(response.body).to.have.property('error');
 
       expect(response.body).to.have.property('error', 'Missing required fields');
     });

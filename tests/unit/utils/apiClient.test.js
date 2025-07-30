@@ -38,6 +38,7 @@ describe('ApiClient', function () {
   describe('constructor', function () {
     it('should initialize with default base URL when none provided', function () {
       const client = new ApiClient();
+      expect(client).to.be.instanceOf(ApiClient);
       expect(axios.create.calledOnce).to.be.true;
     });
 
@@ -45,6 +46,7 @@ describe('ApiClient', function () {
       const baseURL = 'https://custom-api.example.com';
       const client = new ApiClient(baseURL);
       
+      expect(client).to.be.instanceOf(ApiClient);
       expect(axios.create.calledWith(sinon.match({
         baseURL: baseURL,
         timeout: 10000,
@@ -58,6 +60,7 @@ describe('ApiClient', function () {
       const token = 'test-token-123';
       const client = new ApiClient('https://test.com', token);
       
+      expect(client).to.be.instanceOf(ApiClient);
       expect(axios.create.calledWith(sinon.match({
         headers: sinon.match({
           Authorization: `Bearer ${token}`

@@ -201,7 +201,7 @@ class Logger {
         fs.mkdirSync(screenshotDir, { recursive: true });
       }
       
-      const screenshot = await driver.saveScreenshot(screenshotPath);
+      await driver.saveScreenshot(screenshotPath);
       
       this.info(`Screenshot taken: ${filename}`, {
         screenshotPath,
