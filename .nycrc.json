@@ -1,0 +1,24 @@
+{
+  "all": true,
+  "include": [
+    "src/**/*.js"
+  ],
+  "exclude": [
+    "src/mockServer/server.js",
+    "tests/**",
+    "node_modules/**",
+    "coverage/**"
+  ],
+  "reporter": [
+    "html",
+    "text",
+    "lcov"
+  ],
+  "check-coverage": true,
+  "lines": 80,
+  "functions": 80,
+  "branches": 70,
+  "statements": 80,
+  "cache": false,
+  "report-dir": "./coverage"
+}

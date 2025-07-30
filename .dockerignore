@@ -1,0 +1,46 @@
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Test results and reports
+allure-results/
+allure-report/
+screenshots/
+logs/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Test files (for mock server image)
+tests/
+spec/
+
+# Temporary files
+tmp/
+temp/

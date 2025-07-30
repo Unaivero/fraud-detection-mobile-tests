@@ -1,0 +1,351 @@
+name: Fraud Detection Mobile Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to test (android/ios/both)'
+        required: false
+        default: 'android'
+        type: choice
+        options:
+          - android
+          - ios
+          - both
+      environment:
+        description: 'Environment to test against'
+        required: false
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+          - mock
+
+env:
+  NODE_VERSION: '18'
+  JAVA_VERSION: '11'
+
+jobs:
+  lint-and-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run security audit
+        run: npm audit --audit-level moderate
+
+      - name: Check for vulnerabilities
+        run: npm audit --audit-level high --production
+
+  android-tests:
+    needs: lint-and-audit
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'both' || github.event.inputs.platform == null }}
+    
+    strategy:
+      matrix:
+        api-level: [28, 30, 31]
+        target: [default, google_apis]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          profile: Nexus 6
+          cores: 2
+          ram-size: 4096M
+          heap-size: 1024M
+          script: echo "Emulator started"
+
+      - name: Start Appium Server
+        run: |
+          npm install -g appium@2.0.0
+          appium driver install uiautomator2
+          appium --address 0.0.0.0 --port 4723 --relaxed-security &
+          sleep 10
+
+      - name: Start Mock API Server
+        run: |
+          npm run start-server &
+          sleep 5
+        env:
+          MOCK_SERVER_PORT: 3000
+
+      - name: Wait for services
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:4723/wd/hub/status; do sleep 2; done'
+          timeout 30 bash -c 'until curl -f http://localhost:3000/health; do sleep 2; done'
+
+      - name: Run Android Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          profile: Nexus 6
+          script: npm test
+        env:
+          PLATFORM: android
+          API_BASE_URL: http://localhost:3000
+          APPIUM_HOST: localhost
+          APPIUM_PORT: 4723
+          ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          GIT_COMMIT: ${{ github.sha }}
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-test-results-api${{ matrix.api-level }}-${{ matrix.target }}
+          path: |
+            allure-results/
+            logs/
+            screenshots/
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          file: ./coverage/lcov.info
+          flags: android
+
+  ios-tests:
+    needs: lint-and-audit
+    runs-on: macos-latest
+    if: ${{ github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'both' }}
+    
+    strategy:
+      matrix:
+        ios-version: ['15.5', '16.4', '17.0']
+        device: ['iPhone 13', 'iPhone 14']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: List available simulators
+        run: xcrun simctl list devices
+
+      - name: Start iOS Simulator
+        run: |
+          UDID=$(xcrun simctl create "TestDevice" "com.apple.CoreSimulator.SimDeviceType.${{ matrix.device }}" "com.apple.CoreSimulator.SimRuntime.iOS-${{ matrix.ios-version }}")
+          xcrun simctl boot $UDID
+          echo "SIMULATOR_UDID=$UDID" >> $GITHUB_ENV
+
+      - name: Start Appium Server
+        run: |
+          npm install -g appium@2.0.0
+          appium driver install xcuitest
+          appium --address 0.0.0.0 --port 4723 --relaxed-security &
+          sleep 10
+
+      - name: Start Mock API Server
+        run: |
+          npm run start-server &
+          sleep 5
+        env:
+          MOCK_SERVER_PORT: 3000
+
+      - name: Wait for services
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:4723/wd/hub/status; do sleep 2; done'
+          timeout 30 bash -c 'until curl -f http://localhost:3000/health; do sleep 2; done'
+
+      - name: Run iOS Tests
+        run: npm test
+        env:
+          PLATFORM: ios
+          IOS_DEVICE_NAME: ${{ matrix.device }}
+          IOS_PLATFORM_VERSION: ${{ matrix.ios-version }}
+          UDID: ${{ env.SIMULATOR_UDID }}
+          API_BASE_URL: http://localhost:3000
+          APPIUM_HOST: localhost
+          APPIUM_PORT: 4723
+          ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          GIT_COMMIT: ${{ github.sha }}
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-test-results-${{ matrix.ios-version }}-${{ matrix.device }}
+          path: |
+            allure-results/
+            logs/
+            screenshots/
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          file: ./coverage/lcov.info
+          flags: ios
+
+  generate-report:
+    needs: [android-tests, ios-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-results
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Allure
+        run: npm install -g allure-commandline
+
+      - name: Merge test results
+        run: |
+          mkdir -p merged-results
+          find test-results -name "*.json" -exec cp {} merged-results/ \;
+
+      - name: Generate Allure Report
+        run: |
+          allure generate merged-results --clean -o allure-report
+          allure open allure-report
+
+      - name: Upload Allure Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  docker-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker images
+        run: |
+          docker build -t fraud-detection-tests .
+          docker build -f Dockerfile.mock-server -t fraud-mock-api .
+          docker build -f Dockerfile.appium -t fraud-appium-server .
+
+      - name: Test Docker Compose
+        run: |
+          docker-compose -f docker-compose.yml config
+          docker-compose -f docker-compose.yml up -d mock-api
+          sleep 10
+          curl -f http://localhost:3000/health
+          docker-compose -f docker-compose.yml down
+
+  notify:
+    needs: [android-tests, ios-tests, generate-report]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Notify Slack on Success
+        if: ${{ needs.android-tests.result == 'success' && needs.ios-tests.result == 'success' }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: 'Fraud Detection Tests passed successfully! 🎉'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on Failure
+        if: ${{ needs.android-tests.result == 'failure' || needs.ios-tests.result == 'failure' }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: 'Fraud Detection Tests failed! ❌ Check the logs for details.'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,0 +1,36 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment variables
+.env
+
+# Mobile app binaries
+app/*.apk
+app/*.app/
+
+# Test results
+allure-results/
+allure-report/
+
+# IDE specific files
+.idea/
+.vscode/
+*.iml
+
+# Logs
+logs/
+*.log
+
+# Mac specific files
+.DS_Store
+
+# Test screenshots and videos
+screenshots/
+videos/
+
+# Temporary files
+tmp/
+.tmp/
+.cache/

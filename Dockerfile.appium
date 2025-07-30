@@ -1,0 +1,33 @@
+# Specialized Appium Server Container
+FROM appium/appium:latest
+
+# Set working directory
+WORKDIR /opt/appium
+
+# Install additional drivers and plugins
+RUN appium driver install uiautomator2
+RUN appium driver install xcuitest
+RUN appium plugin install images
+RUN appium plugin install element-wait
+
+# Create directories for apps and logs
+RUN mkdir -p /opt/appium/apps /opt/appium/logs
+
+# Copy Appium configuration
+COPY config/appium.config.js /opt/appium/appium.config.js
+
+# Environment variables
+ENV APPIUM_HOST=0.0.0.0
+ENV APPIUM_PORT=4723
+ENV RELAXED_SECURITY=true
+ENV ALLOW_INSECURE=chromedriver_autodownload,adb_shell
+
+# Expose Appium port
+EXPOSE 4723
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:4723/wd/hub/status || exit 1
+
+# Start Appium server
+CMD ["appium", "--address", "0.0.0.0", "--port", "4723", "--relaxed-security", "--allow-insecure", "chromedriver_autodownload,adb_shell"]
