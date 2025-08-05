@@ -9,7 +9,7 @@ module.exports = {
     'plugin:import/recommended'
   ],
   parserOptions: {
-    ecmaVersion: 12,
+    ecmaVersion: 2022,
     sourceType: 'module'
   },
   rules: {

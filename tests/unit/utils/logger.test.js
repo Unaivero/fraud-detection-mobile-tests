@@ -76,7 +76,7 @@ describe('Logger', function () {
       fsStubs.existsSync.returns(false);
       
       delete require.cache[require.resolve('../../../src/utils/logger')];
-      const testLogger = require('../../../src/utils/logger');
+      require('../../../src/utils/logger');
 
       expect(fsStubs.mkdirSync.calledWith(path.dirname('./logs/test-execution.log'), { recursive: true })).to.be.true;
     });

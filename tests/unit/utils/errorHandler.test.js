@@ -7,7 +7,6 @@ const ErrorHandler = require('../../../src/utils/errorHandler');
 
 describe('ErrorHandler', function () {
   let errorHandler;
-  let consoleStubs;
 
   beforeEach(function () {
     // Get fresh instance for each test
@@ -15,12 +14,10 @@ describe('ErrorHandler', function () {
     errorHandler = require('../../../src/utils/errorHandler');
     
     // Stub console methods to avoid noise in test output
-    consoleStubs = {
-      debug: sinon.stub(console, 'debug'),
-      info: sinon.stub(console, 'info'),
-      warn: sinon.stub(console, 'warn'),
-      error: sinon.stub(console, 'error')
-    };
+    sinon.stub(console, 'debug');
+    sinon.stub(console, 'info');
+    sinon.stub(console, 'warn');
+    sinon.stub(console, 'error');
   });
 
   afterEach(function () {

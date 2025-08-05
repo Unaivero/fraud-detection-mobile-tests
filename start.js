@@ -25,7 +25,6 @@ const serverProcess = spawn('node', [path.join(__dirname, 'src', 'mockServer', '
   stdio: 'pipe',
 });
 
-let serverStarted = false;
 const PORT = process.env.MOCK_SERVER_PORT || 3000;
 
 // Handle server output
@@ -35,7 +34,7 @@ serverProcess.stdout.on('data', (data) => {
   
   // Check if server has started
   if (output.includes(`Mock API server running on port ${PORT}`)) {
-    serverStarted = true;
+    // Server ready
     console.log(`\n${colors.green}Mock server started successfully on port ${PORT}${colors.reset}`);
     console.log(`${colors.cyan}Waiting 2 seconds before starting tests...${colors.reset}\n`);
     

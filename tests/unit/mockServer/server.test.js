@@ -144,11 +144,9 @@ describe('Mock API Server', function () {
         password: 'LoginPass123'
       };
 
-      const registerResponse = await request(app)
+      await request(app)
         .post('/auth/register')
         .send(registeredUser);
-
-      authToken = registerResponse.body.token;
     });
 
     it('should successfully login with valid credentials', async function () {

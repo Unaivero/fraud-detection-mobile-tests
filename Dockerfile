@@ -12,7 +12,7 @@ RUN apk add --no-cache \
     git
 
 # Install Appium globally
-RUN npm install -g appium@2.0.0
+RUN npm install -g appium@latest
 
 # Install Appium drivers
 RUN appium driver install uiautomator2
@@ -22,7 +22,7 @@ RUN appium driver install xcuitest
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy source code
 COPY . .

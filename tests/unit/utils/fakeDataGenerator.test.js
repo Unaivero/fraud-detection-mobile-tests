@@ -2,7 +2,6 @@
  * Unit tests for FakeDataGenerator utility class
  */
 const { expect } = require('chai');
-const sinon = require('sinon');
 const { faker } = require('@faker-js/faker');
 const FakeDataGenerator = require('../../../src/utils/fakeDataGenerator');
 
@@ -254,7 +253,7 @@ describe('FakeDataGenerator', function () {
       expect(userData.username.length).to.be.at.least(3);
       expect(userData.email).to.include('@');
       expect(userData.password.length).to.be.at.least(8);
-      expect(userData.phoneNumber).to.match(/[\d\s\-\+\(\)]/);
+      expect(userData.phoneNumber).to.match(/[\d\s\-+()]/);
 
       // Bet data validation
       expect(betData.amount).to.be.a('number');
