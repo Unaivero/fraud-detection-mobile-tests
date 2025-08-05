@@ -11,10 +11,11 @@ RUN apk add --no-cache curl
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy source code (only what's needed for mock server)
 COPY src/mockServer/ ./src/mockServer/
+COPY docker-server.js ./
 
 # Create logs directory
 RUN mkdir -p logs
